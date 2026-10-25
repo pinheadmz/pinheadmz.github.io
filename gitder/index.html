@@ -99,8 +99,8 @@
     font-size: 21px; font-weight: 800; letter-spacing: 0.06em;
     padding: 6px 12px; border-radius: 10px; border: 3px solid;
     opacity: 0; transform: scale(1.35) rotate(var(--rot, -14deg));
-    text-transform: uppercase; pointer-events: none;
-  }
+    text-transform: uppercase; pointer-events: none; transition: opacity .09s ease;
+ }
   #stamp-no { left: 16px; color: var(--red); border-color: var(--red); background: rgba(248,81,73,.13); --rot: -14deg; }
   #stamp-yes { right: 16px; color: var(--purple); border-color: var(--purple); background: rgba(163,113,247,.13); --rot: 12deg; }
 
@@ -810,6 +810,7 @@ function fly(right, cb){
 function swipe(right, viaButtons){
   const pr = current;
   if (!pr) return;
+  setStamp(0);
   if (right) { yes++; el("c-yes").textContent = yes; } else { no++; el("c-no").textContent = no; }
   if (!viaButtons && navigator.vibrate) navigator.vibrate(right ? 18 : 12);
   quip(right);
