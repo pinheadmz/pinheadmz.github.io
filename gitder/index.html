@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>gitder — swipe right on bitcoin/bitcoin</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --border: #30363d;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --red: #f85149;
+    --purple: #a371f7;
+    --link: #58a6ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(1200px 800px at 50% -10%, #1c2431 0%, var(--bg) 60%);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    touch-action: manipulation;
+    padding: max(10px, env(safe-area-inset-top)) 16px max(10px, env(safe-area-inset-bottom));
+  }
+  header {
+    width: 100%; max-width: 420px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 2px 10px;
+  }
+  .logo { display: flex; align-items: baseline; gap: 7px; }
+  .logo .flame { font-size: 22px; }
+  .logo b { font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
+  .logo b em { color: var(--purple); font-style: normal; }
+  .tally { font-size: 12.5px; color: var(--muted); text-align: right; line-height: 1.35; }
+  .tally b { color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .deck { position: relative; width: 100%; max-width: 380px; flex: 1; min-height: 0; }
+  .card {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, var(--bg2), #11161d);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.5);
+    display: flex; flex-direction: column;
+    padding: 16px 16px 14px;
+    will-change: transform;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+  .card .profile { display: flex; align-items: center; gap: 10px; }
+  .profile img, .profile .init {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #21262d; border: 1px solid var(--border); object-fit: cover; flex: none;
+  }
+  .profile .init {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-weight: 600; font-size: 15px;
+  }
+  .who { min-width: 0; }
+  .who .name { font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .who .sub { font-size: 12px; color: var(--muted); }
+  .title {
+    margin-top: 14px;
+    font-size: 17.5px; line-height: 1.3; font-weight: 600;
+    text-transform: capitalize; letter-spacing: 0.01em;
+    min-height: 4.1em;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .title a { color: inherit; text-decoration: none; }
+  .labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 24px; }
+  .chip {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em;
+    padding: 3px 8px; border-radius: 999px;
+    border: 1px solid var(--border); text-transform: lowercase; color: #fff;
+    background: #30363d; white-space: nowrap;
+  }
+  .chip.draft { background: transparent; color: var(--muted); border-color: var(--muted); }
+  .bio {
+    margin-top: auto;
+    font-size: 13.5px; line-height: 1.5; color: #c9d1d9;
+    background: rgba(88,166,255,.06);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 12px;
+  }
+  .bio .hi { color: var(--muted); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .meta { margin-top: 9px; font-size: 11.5px; color: var(--muted); display: flex; justify-content: space-between; }
+
+  .stamp {
+    position: absolute; top: 18px; z-index: 5;
+    font-size: 21px; font-weight: 800; letter-spacing: 0.06em;
+    padding: 6px 12px; border-radius: 10px; border: 3px solid;
+    opacity: 0; transform: scale(1.35) rotate(var(--rot, -14deg));
+    text-transform: uppercase; pointer-events: none;
+  }
+  #stamp-no { left: 16px; color: var(--red); border-color: var(--red); background: rgba(248,81,73,.13); --rot: -14deg; }
+  #stamp-yes { right: 16px; color: var(--purple); border-color: var(--purple); background: rgba(163,113,247,.13); --rot: 12deg; }
+
+  .actions { display: flex; justify-content: center; gap: 26px; padding: 16px 0 6px; }
+  .btn {
+    width: 62px; height: 62px; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--bg2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform .08s ease, box-shadow .2s ease, border-color .2s;
+  }
+  .btn:active { transform: scale(.86); }
+  #no { color: var(--red); }
+  #no:active { border-color: var(--red); box-shadow: 0 0 18px rgba(248,81,73,.4); }
+  #yes { color: var(--purple); }
+  #yes:active { border-color: var(--purple); box-shadow: 0 0 18px rgba(163,113,247,.45); }
+  .btn svg { width: 30px; height: 30px; fill: currentColor; }
+
+  footer { font-size: 10.5px; color: #6e7681; padding-top: 4px; text-align: center; }
+  footer a { color: #6e7681; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(12px);
+    background: #21262d; border: 1px solid var(--border); color: var(--fg);
+    font-size: 13px; padding: 9px 15px; border-radius: 999px;
+    opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+    max-width: 88vw; text-align: center; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  #match {
+    position: fixed; inset: 0; background: rgba(13,17,23,.94); z-index: 60;
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center;
+  }
+  #match.show { display: flex; }
+  #match h2 { margin: 0; font-size: 30px; color: var(--purple); letter-spacing: .02em; }
+  #match p { margin: 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  #match img { width: 92px; height: 92px; border-radius: 50%; border: 2px solid var(--purple); box-shadow: 0 0 40px rgba(163,113,247,.5); }
+  #match button {
+    margin-top: 16px; background: var(--purple); color: #fff; border: 0;
+    padding: 11px 26px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="flame">🔥</span><b>git<em>der</em></b></div>
+  <div class="tally">merged <b id="c-yes">0</b> · closed <b id="c-no">0</b><br><span id="pool"></span></div>
+</header>
+
+<div class="deck" id="deck">
+  <div class="card" id="card" style="display:none">
+    <div id="stamp-no" class="stamp">closed</div>
+    <div id="stamp-yes" class="stamp">merge</div>
+    <div class="profile">
+      <img id="avatar" alt="" onerror="useInit()">
+      <div class="who">
+        <div class="name" id="name"></div>
+        <div class="sub" id="sub"></div>
+      </div>
+    </div>
+    <div class="title" id="title"></div>
+    <div class="labels" id="labels"></div>
+    <div class="bio"><span class="hi">about me</span><span id="bio"></span></div>
+    <div class="meta"><span id="meta-age"></span><span id="meta-act"></span></div>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn" id="no" aria-label="Close PR (swipe left)">
+    <svg viewBox="0 0 24 24"><path d="M18.3 5.71 12 12.01l-6.3-6.3-1.99 2L10.01 12l-6.3 6.3 1.99 2 6.3-6.3 6.3 6.3 2-2-6.3-6.3 6.3-6.3z"/></svg>
+  </button>
+  <button class="btn" id="yes" aria-label="Merge PR (swipe right)">
+    <svg viewBox="0 0 24 24"><path d="M7 3.5a2.5 2.5 0 0 1 2.5 2.5c0 1.11-.72 2.05-1.72 2.39v7.22A2.5 2.5 0 1 1 5 15.61V8.39A2.5 2.5 0 0 1 7 3.5Zm10.25 8.51a2.5 2.5 0 0 1-1.75 4.28c-.9 0-1.7-.48-2.14-1.2l-2.7-3.7c-.1-.13-.16-.3-.16-.47V8.39a2.5 2.5 0 0 1 1.72-2.37A2.5 2.5 0 1 1 14.5 8.4v1.9l2.75 2.71Z"/></svg>
+  </button>
+</div>
+
+<footer>462 open PRs of bitcoin/bitcoin, frozen <span id="frozen">Oct 25</span> · tap title to review on GitHub · <a href="https://github.com/bitcoin/bitcoin/pulls">see the queue</a></footer>
+
+<div class="toast" id="toast"></div>
+
+<div id="match">
+  <h2>IT'S A CONCEPT ACK!</h2>
+  <img id="m-avatar" alt="">
+  <p id="m-text"></p>
+  <button onclick="document.getElementById('match').classList.remove('show')">keep swiping</button>
+</div>
+
+<script>
+const PRS=[
+[36653,"torcontrol: Limit what a Tor control port reply can do","fametrano",0,20261024,1,[]],
+[36652,"http: do not process requests after a closing reply","fametrano",0,20261024,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36650,"depends: fetch qrencode from GitHub under a new file name","fametrano",0,20261024,1,[["Build system","5319e7"]]],
+[36649,"depends: harden Linux and Windows packages","fametrano",0,20261024,1,[["Build system","5319e7"]]],
+[36648,"descriptor, rpc, wallet: do not echo key material in error messages","fametrano",0,20261024,1,[]],
+[36647,"kernel: reject trailing bytes in object creation","fametrano",0,20261024,1,[["Validation","6060aa"]]],
+[36646,"validation: stop reindex on invalid genesis block","fametrano",0,20261024,1,[["Validation","6060aa"]]],
+[36645,"blockstorage: validate last file and parent links","fametrano",0,20261024,1,[["Block storage","000000"]]],
+[36644,"doc: describe REST browser risk as DNS rebinding","fametrano",0,20261024,1,[["Docs","02d7e1"]]],
+[36643,"http: reject Transfer-Encoding other than chunked","fametrano",0,20261024,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36642,"rpc: reset id and version per batch element","fametrano",0,20261024,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36641,"wallet: bound pending MuSig2 sessions","fametrano",0,20261024,1,[["Wallet","08a781"]]],
+[36640,"mempool: clamp future mempool.dat entry times","fametrano",0,20261024,1,[["Mempool","fef2c0"]]],
+[36639,"fees: validate buckets read from estimates file","fametrano",0,20261024,1,[["TX fees and policy","5319e7"]]],
+[36638,"wallet: reject invalid cached xpubs at load","fametrano",0,20261024,1,[["Wallet","08a781"]]],
+[36637,"torcontrol: send -torpassword hex-encoded to avoid escaping bugs","jpk68",0,20261024,1,[]],
+[36636,"netaddress: make .onion suffix check case-insensitive","jpk68",0,20261024,1,[]],
+[36635,"fuzz: Add a target that feeds arbitrary bytes to V2Transport","fametrano",0,20261023,1,[["Fuzzing","0e8a16"]]],
+[36634,"test: reduce hash mod n for RFC6979 nonce","fametrano",0,20261023,1,[["Tests","d4c5f9"]]],
+[36633,"validation: bound snapshot cache growth by bytes, not coin count","fametrano",0,20261023,1,[["Validation","6060aa"]]],
+[36632,"kernel: document process_block storage and two aborting preconditions","fametrano",0,20261023,1,[["Validation","6060aa"]]],
+[36631,"fuzz: add a custom mutator for PSBT","brunoerg",1,20261023,1,[["Fuzzing","0e8a16"]]],
+[36630,"kernel: Add function for setting prune target in ChainstateManagerOptions","rahadbhuiya",0,20261023,1,[["Validation","6060aa"]]],
+[36629,"Add output script index and corresponding script history RPC","andrewtoth",0,20261023,1,[]],
+[36628,"net: reimplement private broadcast as jobs isolated from the node","instagibbs",0,20261023,1,[["P2P","006b75"]]],
+[36627,"tracing: run USDT tests without BPF privileges","willcl-ark",0,20261023,1,[]],
+[36626,"test: check `PSBT_GLOBAL_VERSION` validation on decode","nebula-21",0,20261023,1,[["Tests","d4c5f9"]]],
+[36623,"build: enable `-Wunreachable-code-aggressive`","fanquake",1,20261023,1,[["Build system","5319e7"],["CI failed","cccccc"]]],
+[36621,"node: batch block file pruning in a single pass over block index","mutatrum",0,20261023,1,[]],
+[36620,"test: Add case for libstdc++ bug on Windows","hebasto",0,20261023,1,[["Tests","d4c5f9"]]],
+[36619,"rest: don't log an error for /spenttxouts on a block without undo data","kriss39",0,20261023,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36618,"test: Wait for index sync in wallet_fast_rescan.py","maflcko",0,20261023,1,[["Tests","d4c5f9"]]],
+[36617,"test: Fix intermittent issue in p2p_orphan_handling.py","maflcko",0,20261022,1,[["Tests","d4c5f9"]]],
+[36615,"guix: add --no-same-owner to codesign.sh TAR_OPTIONS","marcofleon",0,20261022,1,[["Build system","5319e7"]]],
+[36614,"test: check algorithm after SelectionResult::Merge","Naomi-Gift",0,20261022,1,[["Tests","d4c5f9"]]],
+[36613,"test: add getblockfilter test coverage for header-only blocks","aaron-leeb",0,20261022,1,[["Tests","d4c5f9"]]],
+[36612,"doc: Merge all BSD build docs back into build-unix.md","maflcko",0,20261022,1,[["Docs","02d7e1"]]],
+[36611,"test: consolidate mempool constants","fanquake",0,20261022,1,[["Tests","d4c5f9"]]],
+[36610,"test: add `plyvel` to deps table","fanquake",0,20261022,1,[["Tests","d4c5f9"]]],
+[36609,"ci: update some infra","fanquake",0,20261022,1,[["Tests","d4c5f9"]]],
+[36608,"Reimplement private broadcast as node state-less jobs + package relay support","instagibbs",1,20261022,1,[["Private Broadcast","e7fa2f"]]],
+[36607,"private broadcast: Extra guard against unintended non-private broadcast of private transactions","optout21",1,20261022,1,[["CI failed","cccccc"],["Private Broadcast","e7fa2f"]]],
+[36606,"test, bench: construct inputs/outputs declaratively in context-dependent cases","alexanderwiederin",0,20261022,1,[["Tests","d4c5f9"]]],
+[36604,"[29.x] Backports","fanquake",0,20261022,1,[["Backport","dd7200"]]],
+[36603,"Improve loadtxoutset performance","ajtowns",0,20261022,1,[]],
+[36601,"test: avoid reusing AssumeUTXO coin insertion method in test fixtures","l0rinc",0,20261022,1,[["Tests","d4c5f9"]]],
+[36598,"[Demo] validation: remove AssumeUTXO","l0rinc",1,20261022,1,[]],
+[36597,"wallet: return broadcast errors from CommitTransaction","pseudoramdom",0,20261021,1,[["Wallet","08a781"]]],
+[36594,"net: make orphan reconsideration more granular","darosior",0,20261021,1,[["P2P","006b75"]]],
+[36593,"depends: Update Qt to 6.12.0","hebasto",1,20261021,1,[["Build system","5319e7"],["CI failed","cccccc"]]],
+[36592,"build: Bump macOS SDK version to 15.0","hebasto",0,20261021,1,[["macOS","660000"],["Build system","5319e7"]]],
+[36591,"test: deduplicate PSBT unknown-field coverage in `rpc_psbt.py`","nebula-21",0,20261021,1,[["Tests","d4c5f9"]]],
+[36589,"[32.x] Guix related backports","hebasto",0,20261021,1,[["Build system","5319e7"],["Backport","dd7200"]]],
+[36588,"refactor: Enable more tidy bugprone checks","maflcko",0,20261021,1,[["Refactoring","E6F6D6"]]],
+[36587,"qa: Fix `interface_ipc*.py` on NetBSD and prevent future regressions","hebasto",0,20261021,1,[["Tests","d4c5f9"]]],
+[36586,"coins: warn of low disk space before chainstate compaction","l0rinc",0,20261020,1,[["UTXO Db and Indexes","fbca04"]]],
+[36584,"kernel: make btck_LogEntry opaque","stickies-v",0,20261020,1,[["Validation","6060aa"]]],
+[36583,"wallet: fix migration of watch-only wallets with transactions","yusufyildiz34",0,20261020,1,[["Wallet","08a781"]]],
+[36580,"refactor: Use util::log::FormatString in BaseIndex::FatalErrorf and LogConnectFailure","maflcko",0,20261020,1,[["Refactoring","E6F6D6"]]],
+[36578,"p2p: clean up a 1p1c package child that is already in the mempool","instagibbs",0,20261019,1,[["P2P","006b75"]]],
+[36577,"psbt: accept taproot ALL sigs with sighash unset","fametrano",0,20261019,1,[["PSBT","39c6b4"]]],
+[36574,"ci: Reword stale readme","maflcko",0,20261019,1,[["Tests","d4c5f9"]]],
+[36572,"ipc: hold event loop references when using it in `CapnpProtocol`","xyzconstant",0,20261019,1,[]],
+[36571,"contrib/init: add systemd hardening directives","jpk68",0,20261019,1,[]],
+[36570,"i2p: pass base32 address directly to stream connect","jpk68",0,20261019,1,[]],
+[36569,"psbt: analyzepsbt reports an error when outputs exceed inputs","Ravan002",0,20261018,1,[["PSBT","39c6b4"]]],
+[36567,"psbt: drop Taproot and MuSig2 signatures when adding an input","Ravan002",0,20261018,1,[["PSBT","39c6b4"]]],
+[36566,"private broadcast: wait synchronously for mempool acceptance","andrewtoth",0,20261018,1,[["Private Broadcast","e7fa2f"]]],
+[36563,"Cover additional script edge cases with the json fixtures","reardencode",0,20261018,1,[]],
+[36556,"depends: fix non-atomic reads in capnp debug assertions","xyzconstant",0,20261017,1,[["Build system","5319e7"]]],
+[36555,"rpc: return error when invalidateblock fails","ja7ad",0,20261016,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36554,"cmake: Reject warnings in `check_cxx_source_compiles_with_flags()`, use `-msse4.1` for SHA-NI","hebasto",0,20261016,1,[["Build system","5319e7"]]],
+[36550,"crypto: cleanse CSHA512 state in its destructor","fametrano",0,20261016,1,[["Wallet","08a781"]]],
+[36549,"WIP: improve MallocUsage and test in CI","sipa",1,20261016,1,[]],
+[36548,"net: serve `MSG_BLOCK` by stripping witnesses in place","l0rinc",0,20261016,1,[["P2P","006b75"]]],
+[36547,"test: return typed P2PInterface from add_p2p_connection helpers","ViniciusCestarii",0,20261015,1,[["Tests","d4c5f9"]]],
+[36543,"validation: check the most recent AssumeUTXO commitment during IBD","l0rinc",0,20261015,1,[["Validation","6060aa"]]],
+[36542,"AssumeUTXO: allow retrying loadtxoutset after an interrupted load","l0rinc",0,20261015,1,[["Validation","6060aa"]]],
+[36540,"mempool: remove time-based transaction expiry","ismaelsadeeq",0,20261015,1,[["Mempool","fef2c0"]]],
+[36539,"gui: Use PSBT v0","davidgumberg",0,20261015,1,[["GUI","02d7e1"],["Needs Backport (32.x)","dd7200"]]],
+[36538,"init: refuse -bytespersigop values that overflow","fametrano",0,20261015,1,[["Validation","6060aa"]]],
+[36537,"crypto: cleanse HMAC hasher state and MuSig2 signing keypair","fametrano",0,20261015,1,[["Utils/log/libs","5319e7"]]],
+[36536,"log: escape C1 control characters in messages","fametrano",0,20261015,1,[["Utils/log/libs","5319e7"]]],
+[36534,"build: pass hardening flags to secp256k1","fametrano",0,20261015,1,[["Build system","5319e7"]]],
+[36529,"test: allow slack on rpcwaittimeout wait floor","nervana21",0,20261014,1,[["Tests","d4c5f9"]]],
+[36528,"guix: binutils 2.47","fanquake",0,20261014,1,[["Build system","5319e7"]]],
+[36525,"mining: add getTotalFees(), protect m_block_template with mutex","Sjors",0,20261014,1,[["Mining","c7def8"]]],
+[36521,"Keep witness stacks in serialized form in CScriptWitness","sipa",0,20261014,1,[]],
+[36520,"interfaces: Avoid node crashes from invalid Chain IPC calls","ryanofsky",0,20261014,1,[["IPC","83c9fc"]]],
+[36513,"ci: Limit workflow token to contents: read","fametrano",0,20261013,1,[["Tests","d4c5f9"]]],
+[36506,"p2p: plug \"tier 1\" 1p1c liveness holes","instagibbs",0,20261012,1,[["P2P","006b75"]]],
+[36503,"rpc: reject AssumeUTXO rollback without tip data","l0rinc",0,20261011,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36501,"refactor : Reorder CBlockIndex members to save 8 bytes","bartoli",0,20261011,1,[]],
+[36500,"AssumeUTXO: reject duplicate coins and empty snapshot groups","l0rinc",0,20261011,1,[["Validation","6060aa"]]],
+[36497,"test: Add coverage for TorControl `SAFECOOKIE` authentication","winterrdog",0,20261010,1,[["Tests","d4c5f9"]]],
+[36496,"coins: avoid redundant prevout preparation allocations","l0rinc",0,20261010,1,[["UTXO Db and Indexes","fbca04"]]],
+[36494,"wallet: reject unknown options in sendall","thomasbuilds",0,20261010,1,[["Wallet","08a781"]]],
+[36489,"wallet: rpc: Add snake_case aliases for wallet funding options","maflcko",0,20261009,1,[["Wallet","08a781"]]],
+[36488,"rpc: wallet: Schedule mixed-case confTarget option deprecation","maflcko",0,20261009,1,[["Wallet","08a781"],["RPC/REST/ZMQ","0052cc"]]],
+[36482,"wallet: Only broadcast resubmitted transactions that were added to the mempool","achow101",0,20261008,1,[["Wallet","08a781"]]],
+[36481,"wallet, rpc, gui: Allow users to manually rebroadcast a wallet transaction","achow101",0,20261008,1,[["CI failed","cccccc"]]],
+[36480,"txospenderindex: hash keys and pack positions to reduce disk usage","arejula27",1,20261008,1,[["CI failed","cccccc"]]],
+[36478,"rpc: Check named args names and result field names at compile time","maflcko",0,20261008,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36477,"private broadcast: show finished transactions in getprivatebroadcastinfo","vasild",0,20261008,1,[["Private Broadcast","e7fa2f"]]],
+[36475,"bench: add BIP-352 pubkey extraction benchmarks (standard + P2PKH worst-case)","theStack",0,20261008,1,[["Tests","d4c5f9"]]],
+[36470,"test: make p2p_eviction actually exercise block-time protection","brunoerg",0,20261008,1,[["Tests","d4c5f9"]]],
+[36466,"policy: make unstructured Taproot annexes standard","RobinLinus",0,20261008,1,[["TX fees and policy","5319e7"]]],
+[36458,"Test: Add script vectors for interpreter edges","benthecarman",0,20261007,1,[["Tests","d4c5f9"]]],
+[36455,"Test: Add legacy script edge cases to taproot test","benthecarman",0,20261007,1,[["Tests","d4c5f9"]]],
+[36452,"validation: fix false corruption errors after pruning or AssumeUTXO","l0rinc",0,20261007,1,[["Validation","6060aa"]]],
+[36451,"refactor: Use NotNull for CreateNewBlock and pimpls","maflcko",1,20261007,1,[["Refactoring","E6F6D6"],["CI failed","cccccc"]]],
+[36445,"net: Skip cs_main when a peer has no orphan work","w0xlt",0,20261006,1,[["P2P","006b75"]]],
+[36444,"wallet: Store information about created and imported multipath descriptors","achow101",1,20261005,1,[["Wallet","08a781"],["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[36443,"descriptor: Reconstruct a multipath descriptor from its expansion","achow101",1,20261005,1,[["Needs rebase","cccccc"],["Descriptors","e9f76c"],["CI failed","cccccc"]]],
+[36442,"descriptor: Represent multipath descriptors in a single Descriptor object","achow101",0,20261005,1,[["Needs rebase","cccccc"],["Descriptors","e9f76c"],["CI failed","cccccc"]]],
+[36437,"orphanage: Fix orphan reconsideration disconnect hole, add 1p1c invariant harness","instagibbs",0,20261005,1,[]],
+[36434,"http: support unix sockets","pinheadmz",0,20261004,1,[["RPC/REST/ZMQ","0052cc"],["Needs rebase","cccccc"]]],
+[36429,"[RFC] Delayed transaction broadcast, minimal","optout21",1,20261003,1,[]],
+[36420,"descriptor: compare x-only public keys in Tapscript Miniscript duplicate check","Yudis-bit",0,20261002,1,[["Descriptors","e9f76c"]]],
+[36410,"test: cover compact blocks far ahead of the tip","fametrano",0,20261002,1,[["Tests","d4c5f9"]]],
+[36409,"sign: use fresh randomness as BIP340 auxiliary data","fametrano",0,20261002,1,[]],
+[36408,"test: allow 3 bytes of fee overestimate in assert_fee_amount","fametrano",0,20261002,1,[["Tests","d4c5f9"]]],
+[36406,"test: make p2p_orphan_handling's never-requested checks able to fail","fametrano",0,20261001,1,[["Tests","d4c5f9"]]],
+[36405,"test: look for the wtxid in p2p_blocksonly","fametrano",0,20261001,1,[["Tests","d4c5f9"]]],
+[36402,"refactor: `wallet_importdescriptors` to separate `run_test()` contents into specific functions","nebula-21",0,20261001,1,[["Refactoring","E6F6D6"]]],
+[36398,"wallet: only rebroadcast transactions originating from the wallet","mzumsande",0,20261001,1,[["Wallet","08a781"]]],
+[36395,"script: clarify implicit signature-cache input requirements","l0rinc",0,20260930,1,[["Consensus","009800"]]],
+[36393,"wallet: enforce max_tx_weight for preset inputs","gjija",0,20260930,1,[["Wallet","08a781"]]],
+[36387,"wallet: rpc: Deprecate `encryptwallet` RPC for encrypting existing wallets.","davidgumberg",0,20260930,1,[["Wallet","08a781"]]],
+[36386,"compressor: oversized script decoding can leave a spendable script","l0rinc",0,20260930,1,[]],
+[36385,"rest: fix getutxos POST body decoding","l0rinc",0,20260930,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36384,"rpc: Use self.Arg<_>(name) helper over manual and duplicate parsing","maflcko",0,20260929,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36382,"rpc: flag invalid taproot leaf control blocks in decodepsbt","fametrano",0,20260929,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36380,"wallet: extend -walletbroadcast to allow initial send only","vasild",0,20260929,1,[["Wallet","08a781"]]],
+[36378,"test: Add SKIP_WRITE edge case to wallet_startup","aaron-leeb",0,20260929,1,[["Tests","d4c5f9"]]],
+[36374,"torcontrol: escape backslashes in -torpassword","0xShadowX",0,20260928,1,[]],
+[36373,"init: log resolved datadir path","LarryRuane",0,20260928,1,[]],
+[36372,"p2p: replace full outbound peers that don't support tx relay (take 2)","fjahr",0,20260928,1,[["P2P","006b75"]]],
+[36367,"mempool: keep prioritisetransaction deltas within MAX_MONEY","Bruce039",0,20260928,1,[["Mempool","fef2c0"]]],
+[36366,"net: limit relative ban times to uint32","Bruce039",0,20260928,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36361,"[31.x] Backport #35168","fametrano",0,20260927,1,[["Backport","dd7200"]]],
+[36360,"test: add tests in script test suites covering script.cpp live mutants","Yudis-bit",0,20260927,1,[["Tests","d4c5f9"]]],
+[36358,"[31.x] net: don't discourage private broadcast peers","andrewtoth",0,20260927,1,[["Backport","dd7200"]]],
+[36357,"mining: move BlockAssembler statics into BlockTemplateManager","w0xlt",1,20260927,1,[["Mining","c7def8"]]],
+[36356,"mining: move getblocktemplate cache into BlockTemplateManager","w0xlt",0,20260927,1,[["Mining","c7def8"],["Needs rebase","cccccc"]]],
+[36350,"net_processing: count presync work in chain sync eviction","0xShadowX",0,20260926,1,[["P2P","006b75"],["CI failed","cccccc"]]],
+[36348,"doc/i2p: mention -privatebroadcast bypasses persistent address","jpk68",0,20260926,1,[]],
+[36347,"node: don't abort on invalid -dbcache in settings.json","0xShadowX",0,20260926,1,[]],
+[36346,"validation: don't accept txs to the mempool while loading a snapshot","0xShadowX",0,20260926,1,[["Validation","6060aa"]]],
+[36344,"wallet: reject duplicate inputs in sendall","Bruce039",0,20260926,1,[["Wallet","08a781"]]],
+[36343,"psbt: verify final scripts in FinalizePSBT","Bruce039",0,20260926,1,[["PSBT","39c6b4"]]],
+[36342,"wallet: reject recipient amounts above MAX_MONEY","Bruce039",0,20260926,1,[["Wallet","08a781"]]],
+[36333,"wallet: Delete `removeprunedfunds` and delete transaction delete code","davidgumberg",0,20260925,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[36332,"sign: add musig2 data after validating musig2 involvement","achow101",0,20260924,1,[]],
+[36330,"wallet: don't resubmit transactions under -privatebroadcast","instagibbs",0,20260924,1,[["Wallet","08a781"],["Private Broadcast","e7fa2f"]]],
+[36328,"p2p: Reconsider package transactions that are immediately trimmed","instagibbs",0,20260924,1,[["P2P","006b75"]]],
+[36326,"kernel: Use typed errors for fatal and flush error notifications","arejula27",0,20260924,1,[["Validation","6060aa"]]],
+[36325,"Contrib: add multisig wizard","rxbryan",0,20260924,1,[["Scripts and tools","ffffee"]]],
+[36318,"validation: Ensure Invalid ValidationState has result","optout21",0,20260923,1,[["Validation","6060aa"]]],
+[36313,"wallet: fix persistent coin lock upgrade","ArvinFarrelP",0,20260922,1,[["Wallet","08a781"]]],
+[36305,"net: Use exclusive P2P listen sockets on Windows","winterrdog",0,20260920,1,[["Windows","884400"],["P2P","006b75"]]],
+[36293,"contrib: exclude inactive keys from the binary quorum by default","l0rinc",0,20260917,1,[["Scripts and tools","ffffee"]]],
+[36292,"index: Delete old coinstats index directory on startup","fjahr",0,20260917,1,[["UTXO Db and Indexes","fbca04"]]],
+[36280,"validation: throw when a compressed script can't be decompressed","furszy",0,20260916,1,[["Validation","6060aa"]]],
+[36270,"build: ensure release binaries don't contain `depends` references","fanquake",1,20260916,1,[["Build system","5319e7"]]],
+[36269,"guix: build with `_GLIBCXX_USE_DEPRECATED=0`","fanquake",0,20260916,1,[["Build system","5319e7"]]],
+[36268,"refactor: prune unused semi-colons","fanquake",1,20260916,1,[["Refactoring","E6F6D6"],["CI failed","cccccc"]]],
+[36266,"rpc: Let dumptxoutset fail early on stale targets and concurrent runs","fjahr",0,20260916,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36259,"http: update m_keep_alive under m_send_mutex","azuchi",0,20260915,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36257,"qa: assert_equals -> assert_true/assert_false","hodlinator",0,20260915,1,[["Tests","d4c5f9"]]],
+[36255,"Refactor CoinGrinder tests","murchandamus",1,20260914,1,[["CI failed","cccccc"]]],
+[36254,"bench: add and use undo-data for BlockToJsonVerbosity3 bench","0xB10C",0,20260914,1,[["Tests","d4c5f9"]]],
+[36252,"ci, iwyu: skip subtrees in compilation database","ryanofsky",0,20260914,1,[]],
+[36245,"wallet: start descriptor top up at range_start instead of index 0","kriss39",0,20260914,1,[["Wallet","08a781"]]],
+[36244,"validation, net: Process blocks asynchronously and reduce cs_main contention","w0xlt",1,20260914,1,[["Needs rebase","cccccc"]]],
+[36236,"wallet, rpc: add verify_balance option to importdescriptors","musaHaruna",0,20260913,1,[["Needs rebase","cccccc"]]],
+[36234,"util: avoid redundant rolling Bloom insertions","JeremyRubin",0,20260912,1,[["Utils/log/libs","5319e7"]]],
+[36224,"test: Add test coverage for `PartiallySignedTransaction::Merge()`","nebula-21",0,20260910,1,[["Tests","d4c5f9"]]],
+[36220,"rpc: report background validation progress in getchainstates","arejula27",0,20260910,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36214,"test: cover cluster limits during reorgs","yuvicc",0,20260910,1,[["Tests","d4c5f9"]]],
+[36212,"cli: Display warning arrays in -getinfo","LittleYier",0,20260909,1,[["Scripts and tools","ffffee"]]],
+[36210,"streams: Include the OS error when AutoFile I/O fails","pablomartin4btc",0,20260909,1,[]],
+[36208,"addrman: apply time penalty in nTime check","mzumsande",0,20260909,1,[["P2P","006b75"]]],
+[36204,"http: disconnect clients that never finish a request","janb84",0,20260909,1,[["RPC/REST/ZMQ","0052cc"],["Needs rebase","cccccc"]]],
+[36200,"rpc: invalid credentials can occupy every HTTP worker","hodlinator",1,20260909,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36193,"guix: introduce a minimal `linux-base-gcc` variant","fanquake",0,20260908,1,[["Build system","5319e7"],["DrahtBot Guix build requested","bfd4f2"]]],
+[36192,"test: cover unsatisfiable mining timestamp","Sjors",0,20260908,1,[["Tests","d4c5f9"]]],
+[36190,"test: Check bitcoin wrapper child exit status on windows","Bortlesboat",1,20260908,1,[["Utils/log/libs","5319e7"]]],
+[36188,"crypto: plug hardware optimized SHA256 into libsecp256k1's context","furszy",0,20260907,1,[["Utils/log/libs","5319e7"]]],
+[36187,"http: Restore requirement of IPv4 bind success","hodlinator",0,20260907,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36185,"test: add BIP32 vectors 3 and 4 to the extendedkey self-test","fametrano",0,20260907,1,[["Tests","d4c5f9"]]],
+[36184,"test: fix TaprootSignatureMsg default codeseparator_pos","fametrano",0,20260907,1,[["Tests","d4c5f9"]]],
+[36183,"span: diagnose dangling views from MakeByteSpan/MakeUCharSpan","kevkevinpal",0,20260907,1,[["Needs rebase","cccccc"]]],
+[36182,"fees: return `block_policy` fee rate estimate when `mempool_policy` is not ready","ismaelsadeeq",1,20260907,1,[["TX fees and policy","5319e7"],["Needs rebase","cccccc"]]],
+[36180,"qt: don't abort or drop settings when dynamic settings are disabled","jeanpablojp",0,20260907,1,[["GUI","02d7e1"]]],
+[36175,"rpc: Stamp `getblock` OpenRPC result discriminator","nervana21",0,20260905,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36170,"net: require a dedicated bind for automatic Tor","l0rinc",0,20260904,1,[["P2P","006b75"]]],
+[36167,"[RFC] Enable `-Wunused`","fanquake",1,20260904,1,[["CI failed","cccccc"]]],
+[36157,"contrib: fix dead null-byte check in linearize-data.py","amannx21",0,20260903,1,[["Scripts and tools","ffffee"]]],
+[36156,"mining: include chunks that reach block limits","l0rinc",0,20260903,1,[["Mining","c7def8"]]],
+[36154,"wallet: fill PSBT_GLOBAL_XPUB for descriptors with more than one key","jeanpablojp",0,20260902,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[36149,"validation: Leave pruned blocks in `m_blocks_unlinked`, fix another `nSequenceId` issue","mzumsande",1,20260902,1,[["Validation","6060aa"]]],
+[36147,"ci: add [free|open|net]BSD ci test jobs","willcl-ark",1,20260902,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[36143,"descriptor: add CreateMultisigDescriptor()","rxbryan",0,20260901,1,[["Descriptors","e9f76c"]]],
+[36142,"net: validate Tor onion service replies and cached keys","l0rinc",0,20260901,1,[["P2P","006b75"]]],
+[36132,"mining: preserve lookup result count without a mempool","l0rinc",0,20260831,1,[["Mining","c7def8"]]],
+[36129,"fuzz: reset chainman after external block imports","HowHsu",1,20260831,1,[["Fuzzing","0e8a16"]]],
+[36126,"wallet, rpc: Implements set key label functionality","polespinasa",1,20260831,1,[["Needs rebase","cccccc"]]],
+[36124,"http: Make `HTTPRequest` update state internally","hodlinator",0,20260831,1,[["RPC/REST/ZMQ","0052cc"]]],
+[36122,"BIP460: CISA for Taproot key path spends","fjahr",1,20260829,1,[["CI failed","cccccc"]]],
+[36114,"wallet: harden external signer psbt processing, revamp mock","Sjors",0,20260828,1,[["Wallet","08a781"]]],
+[36109,"test: fix coinbases built on arbitrary parents","l0rinc",0,20260828,1,[["Tests","d4c5f9"]]],
+[36106,"bitcoin wrapper: respect CMAKE_INSTALL_BINDIR/LIBEXECDIR","ryanofsky",0,20260827,1,[]],
+[36105,"bitcoin wrapper: Fix Windows exec so wrapper waits for child process","ryanofsky",0,20260827,1,[]],
+[36101,"doc: Add an error handling strategy","purpleKarrot",1,20260827,1,[["Brainstorming","ebd775"],["Docs","02d7e1"]]],
+[36098,"fuzz: add corpus reachability checks","HowHsu",0,20260827,1,[["Fuzzing","0e8a16"]]],
+[36097,"mining: replace interrupt methods with cancellation arguments","xyzconstant",1,20260827,1,[["Mining","c7def8"],["CI failed","cccccc"]]],
+[36091,"test: Add debug output to common tested types","rustaceanrob",0,20260826,1,[["Tests","d4c5f9"]]],
+[36087,"util: Add and use AssertUnreachable","maflcko",1,20260826,1,[["Utils/log/libs","5319e7"],["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[36082,"ci: add Guix builds to CI","willcl-ark",0,20260825,1,[["Tests","d4c5f9"]]],
+[36074,"scripted-diff: [test] Add util/check.h includes for assertions","maflcko",0,20260825,1,[["Refactoring","E6F6D6"]]],
+[36073,"fuzz: Add musig harness","nervana21",0,20260825,1,[["Fuzzing","0e8a16"]]],
+[36071,"refactor: fuzz: remove cost_of_change from coin-grinder fuzz target","yancyribbens",0,20260824,1,[["Refactoring","E6F6D6"]]],
+[36070,"wallet: Add deriveHDKey interface","PraneethGunas",0,20260824,1,[["Wallet","08a781"]]],
+[36068,"fuzz: reuse one fuzzed wallet across inputs","brunoerg",0,20260824,1,[["Fuzzing","0e8a16"]]],
+[36066,"validation: Separate check-only version of ConnectBlock","optout21",0,20260824,1,[["Validation","6060aa"]]],
+[36060,"build: require KJ exception support for IPC","151henry151",1,20260824,1,[["Build system","5319e7"]]],
+[36049,"streams: avoid termination on buffered write failure","l0rinc",0,20260820,1,[]],
+[36047,"rpc: handle createNewBlock() returning nullptr during shutdown","chriszeng1010",0,20260820,1,[["RPC/REST/ZMQ","0052cc"],["Needs rebase","cccccc"]]],
+[36042,"build: Bump g++ minimum supported version to 13","maflcko",1,20260820,1,[["Build system","5319e7"]]],
+[36040,"Wallet: Don't backdate locktime rbf","Bicaru20",0,20260820,1,[["Wallet","08a781"]]],
+[36039,"psbt: classify missing Taproot script-path signatures as signer","btcpavao",0,20260820,1,[["PSBT","39c6b4"]]],
+[36038,"util: remove usage of `strerror_r`","fanquake",0,20260820,1,[["Utils/log/libs","5319e7"]]],
+[36036,"build: Bump clang minimum supported version to 19","maflcko",0,20260820,1,[["Build system","5319e7"]]],
+[36033,"[wip,nomerge,rfc] build: Require C++23 compiler","maflcko",1,20260820,1,[["CI failed","cccccc"]]],
+[36031,"wallet: Remove mapMasterKeys and enforce that only one encryption key can exist","achow101",0,20260819,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[36028,"miniscript: make typing rule match BIP-379 exactly","sipa",1,20260819,1,[["Descriptors","e9f76c"]]],
+[36023,"build: Always define HAVE_SYSTEM","Sjors",0,20260819,1,[["Build system","5319e7"]]],
+[36022,"test: add coverage for bitcoin wrapper argument handling","cyb3ralbert",0,20260819,1,[["Tests","d4c5f9"]]],
+[36015,"txorphanage: bound orphan memory by storing transactions serialized","brunoerg",0,20260818,1,[]],
+[36014,"init: ignore repeated `-addnode` startup values","w0xlt",0,20260818,1,[]],
+[36013,"test: Descriptor roundtrip and raw()/ addr() coverage","pablomartin4btc",0,20260818,1,[["Tests","d4c5f9"]]],
+[36011,"btcsignals: destroy callbacks on disconnect","ryanofsky",0,20260818,1,[]],
+[36005,"rpc, descriptor: warn when multipath expansion clones single-path key expressions","pythcoiner",0,20260818,1,[["Needs rebase","cccccc"]]],
+[36002,"txindex: allow running in pruned mode","andrewtoth",0,20260818,1,[]],
+[36000,"validation: prefetch blocks while connecting","l0rinc",0,20260817,1,[["Validation","6060aa"]]],
+[35998,"wallet: Handle or explicitly ignore `WalletBatch` write failures","achow101",0,20260817,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[35997,"refactor: bench: make_hard_case to find a solution","yancyribbens",0,20260817,1,[["Refactoring","E6F6D6"]]],
+[35994,"Primitives: Combine assignments","purpleKarrot",1,20260817,1,[["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[35990,"wallet: harden the read-only BDB parser against crafted files","shuv-amp",0,20260816,1,[["Wallet","08a781"]]],
+[35964,"fuzz: add coverage for GetQueryParameterFromUri","laxmanacharya8",0,20260813,1,[["Fuzzing","0e8a16"]]],
+[35957,"ci: Enable Boost.MultiIndex invariant-checking mode","hebasto",0,20260812,1,[["Tests","d4c5f9"]]],
+[35940,"net: allow selecting BIP152 high-bandwidth peers with `-addnode`","w0xlt",0,20260810,1,[["P2P","006b75"]]],
+[35936,"net: reject oversized locators before allocating","l0rinc",0,20260807,1,[["P2P","006b75"]]],
+[35932,"ipc: make ipc::disconnectIncoming wait for in-progress calls to complete","ryanofsky",1,20260807,1,[["IPC","83c9fc"]]],
+[35920,"net_processing: Ignore MSG_WITNESS_TX entries from INV messages","ajtowns",0,20260806,1,[]],
+[35918,"descriptor: Expose key expression parsing","pseudoramdom",0,20260806,1,[["Descriptors","e9f76c"]]],
+[35916,"fuzz: improve ipc fuzz coverage","enirox001",0,20260806,1,[["Fuzzing","0e8a16"]]],
+[35911,"Warn on and add missing [[noreturn]]","fanquake",1,20260806,1,[["CI failed","cccccc"]]],
+[35909,"rest: Allow fetching stale header","davidgumberg",0,20260805,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35906,"First steps towards a stateless, side-effect free validation library","purpleKarrot",0,20260805,1,[]],
+[35902,"zmq: Log bind error at Error level, abort startup on init error","chriszeng1010",0,20260805,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35901,"wallet: Fix ScanForWalletTransactions missing tx when look-ahead pool expands mid-block","pablomartin4btc",0,20260805,1,[["Wallet","08a781"]]],
+[35888,"net: reject oversized outbound messages","l0rinc",0,20260804,1,[["P2P","006b75"]]],
+[35882,"test: cover Taproot standardness rules in mempool_accept","jeanpablojp",0,20260804,1,[["Tests","d4c5f9"]]],
+[35874,"p2p: prevent BIP35 requesters from bypassing inbound tx-relay capacity","l0rinc",0,20260803,1,[["P2P","006b75"],["Needs rebase","cccccc"]]],
+[35861,"Testnet 5 (BIP95)","fjahr",1,20260801,1,[["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[35858,"doc: Add privacy.md consolidating network privacy recommendations","pablomartin4btc",0,20260801,1,[["Docs","02d7e1"]]],
+[35855,"guix: update time-machine","fanquake",1,20260731,1,[["Build system","5319e7"]]],
+[35837,"rpc: fail scanblocks when block filter range is unavailable","MicSm",0,20260729,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35834,"Test checkunparsable errors","Herb-ops",0,20260729,1,[["Needs rebase","cccccc"]]],
+[35831,"argsman, cli: Allow options after non-option arguments (GNU-style)","pablomartin4btc",0,20260728,1,[]],
+[35827,"bench: add  index  benchmarks","arejula27",0,20260727,1,[["Tests","d4c5f9"]]],
+[35820,"refactor: keep duration calculations typed","l0rinc",0,20260727,1,[["Refactoring","E6F6D6"]]],
+[35818,"bloom: avoid undefined sizing calculations","l0rinc",0,20260726,1,[]],
+[35814,"contrib: Autogenerate bitcoin-cli bash completion file from getopenrpcinfo","carloantinarella",1,20260726,1,[["Scripts and tools","ffffee"]]],
+[35793,"Implement BIP 54 (Consensus Cleanup) without mainnet activation","darosior",0,20260724,1,[]],
+[35788,"bitcoin-util: Add evalscript subcommand","ajtowns",0,20260724,1,[]],
+[35786,"wallet: drop spent parents redundant cache invalidation and notification","furszy",0,20260723,1,[["Wallet","08a781"]]],
+[35774,"ci: test cross-built macos arm64 binaries","willcl-ark",0,20260722,1,[["Tests","d4c5f9"]]],
+[35765,"depends: keep local source archives in WORK_PATH","willcl-ark",0,20260721,1,[["Build system","5319e7"]]],
+[35763,"util: write JSON atomically in WriteJson","kevkevinpal",0,20260721,1,[["Utils/log/libs","5319e7"]]],
+[35762,"test: optionally run functional tests via CTest","willcl-ark",0,20260721,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[35760,"wallet: make corrupted transaction records fail wallet loading instead of forcing a rescan","achow101",0,20260720,1,[["Wallet","08a781"]]],
+[35756,"cmake: De-duplicate libraries where possible","hebasto",0,20260720,1,[["Build system","5319e7"]]],
+[35751,"validation: use parallel input prevout fetching in TestBlockValidity","andrewtoth",1,20260719,1,[["Validation","6060aa"]]],
+[35750,"addrman: make `m_last_good` network-specific","mzumsande",1,20260719,1,[["P2P","006b75"]]],
+[35747,"wallet: Fix FillPSBT failing to sign owned inputs when UTXOs disagree","nervana21",0,20260719,1,[["Wallet","08a781"]]],
+[35733,"sign: Remove FillableSigningProvider","achow101",0,20260715,1,[["Needs rebase","cccccc"]]],
+[35731,"Indexes: Harden the flush-error notification invariant","arejula27",1,20260715,1,[["UTXO Db and Indexes","fbca04"],["CI failed","cccccc"]]],
+[35728,"rpc: Properly throw on internal I/O errors in GetTransaction","maflcko",0,20260715,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35722,"ci: cache BSD sdk sources separately","willcl-ark",0,20260714,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[35716,"wallet: Replace mapWallet and wtxOrdered with a boost::multi_index","achow101",0,20260714,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[35714,"validation: return block-file flush errors","l0rinc",0,20260713,1,[["Validation","6060aa"]]],
+[35713,"Remove boost as a unit test runner","rustaceanrob",0,20260713,1,[]],
+[35688,"crypto: accept empty HMAC keys","l0rinc",0,20260708,1,[["Utils/log/libs","5319e7"]]],
+[35686,"lint: have git-subtree-check check for backportability","Sjors",0,20260708,1,[["Tests","d4c5f9"]]],
+[35671,"mining: add TxCollection to bandwidth-efficiently validate external block templates","Sjors",0,20260706,1,[["Mining","c7def8"]]],
+[35662,"script: prevent partial reinitialization of sighash data","l0rinc",0,20260706,1,[["Consensus","009800"]]],
+[35646,"RFC: Separate out runtime errors from BlockValidationState using `util::Expected`","yuvicc",0,20260703,1,[["Brainstorming","ebd775"],["Validation","6060aa"],["Needs rebase","cccccc"]]],
+[35642,"headersync: do parameter search at runtime","sipa",0,20260702,1,[]],
+[35641,"kernel: Add script evaluation tracer","sedited",0,20260702,1,[["Validation","6060aa"]]],
+[35624,"test: cover addnode connection limit","beihaili",1,20260630,1,[["Tests","d4c5f9"]]],
+[35608,"contrib: Skip llvm-cov rendering for deterministic fuzz inputs","HowHsu",0,20260626,1,[["Scripts and tools","ffffee"],["Needs rebase","cccccc"]]],
+[35600,"net: prevent duplication manual connections (take 2)","willcl-ark",0,20260625,1,[["P2P","006b75"]]],
+[35598,"test: cover feeThreshold = MAX_MONEY in interface_ipc_mining.py","Sjors",0,20260624,1,[["Tests","d4c5f9"]]],
+[35591,"[DO NOT MERGE] Erlay: bandwidth-efficient transaction relay protocol (Full implementation)","sr-gi",0,20260623,1,[["Needs rebase","cccccc"]]],
+[35581,"node: add block template manager and track waitNext fee inflow","ismaelsadeeq",1,20260622,1,[["Mining","c7def8"],["Needs rebase","cccccc"],["IPC","83c9fc"]]],
+[35578,"net: don\u2019t self advertise tor exit node ip addresses in outbound connections","stratospher",0,20260621,1,[["P2P","006b75"]]],
+[35570,"refactor: Change some validation.cpp methods to return BlockValidationState","optout21",0,20260620,1,[["Refactoring","E6F6D6"]]],
+[35569,"Encapsulation for CTransaction","purpleKarrot",0,20260619,1,[["Refactoring","E6F6D6"],["Validation","6060aa"]]],
+[35561,"net: move some CNodeState fields to Peer","Crypt-iQ",0,20260618,1,[["P2P","006b75"]]],
+[35558,"p2p: Prefill compact blocks","davidgumberg",1,20260618,1,[["P2P","006b75"]]],
+[35557,"kernel, validation: Add btck_chainstate_manager_set_clock_time","ryanofsky",0,20260618,1,[["Validation","6060aa"],["Needs rebase","cccccc"],["Kernel","fb5568"]]],
+[35524,"validation: Avoid rewriting the genesis block during index recovery","winterrdog",1,20260613,1,[["Utils/log/libs","5319e7"]]],
+[35522,"refactor: Extract per-message helpers from SendMessages() (move-only)","pablomartin4btc",0,20260612,1,[["Refactoring","E6F6D6"]]],
+[35518,"doc: document -blocknotify, -walletnotify and other -*notify options","fernandguil",0,20260612,1,[["Docs","02d7e1"]]],
+[35511,"RFC: consensus: Make `CAmount` a class","hodlinator",1,20260611,1,[]],
+[35502,"refactor: extract per-message helpers from ProcessMessage (move-only)","w0xlt",0,20260610,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[35492,"wallet: fail dump on incomplete writes","OSINTv96",0,20260609,1,[["Wallet","08a781"]]],
+[35480,"doc: document ZMQ notification behavior during reorgs and evictions","fernandguil",0,20260607,1,[["Docs","02d7e1"]]],
+[35474,"node: move index ownership to NodeContext","w0xlt",0,20260606,1,[["Refactoring","E6F6D6"],["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[35454,"cmake: skip missing example targets in libmultiprocess.cmake","ryanofsky",1,20260603,1,[["Build system","5319e7"]]],
+[35444,"wallet: make descriptor SPKM mutex non-recursive","w0xlt",0,20260602,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[35443,"tests: add functional test for tr musig2 miniscript decaying multisig","mjdietzx",0,20260602,1,[["Tests","d4c5f9"]]],
+[35442,"test: remove usages of MAX_BIP125_RBF_SEQUENCE constant from functional tests","rkrux",1,20260602,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[35433,"wallet: deprecate replaceable argument from transaction (and psbt) creation (and modification) RPCs","rkrux",0,20260601,1,[["Wallet","08a781"]]],
+[35429,"wallet: avoid global access in external signer SPKM","w0xlt",0,20260601,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[35387,"logging: make trace logging easily usable","ryanofsky",0,20260526,1,[]],
+[35377,"wallet: Allow importing of descriptors without private keys when the wallet has the private keys","achow101",0,20260525,1,[["Wallet","08a781"],["CI failed","cccccc"]]],
+[35370,"rpc: add key-origin modes to PSBT processing RPCs","junbyjun1238",0,20260525,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35368,"tracing: add block header and compact block tracepoints","w0xlt",0,20260523,1,[["Needs rebase","cccccc"]]],
+[35356,"ci: Test build dir with spaces","maflcko",1,20260522,1,[["Tests","d4c5f9"],["CI failed","cccccc"]]],
+[35355,"Use atomics for determining whether trace logging is enabled","ajtowns",1,20260522,1,[]],
+[35354,"net: wait for validation queue flush for missing compact filter for an already known block","randomlogin",0,20260521,1,[["P2P","006b75"]]],
+[35322,"logging: streamline Logger state and drop redundant methods","ryanofsky",0,20260519,1,[["Needs rebase","cccccc"]]],
+[35315,"refactor: Use NodeClock::time_point in more places","maflcko",0,20260518,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[35307,"blockstorage: keep snapshot base in normal blockfile range","shuv-amp",0,20260517,1,[["Block storage","000000"]]],
+[35302,"Silent Payments:  Sending (take 2)","Eunovo",0,20260516,1,[]],
+[35300,"mining: add precious option to IPC block submission","w0xlt",0,20260516,1,[["Mining","c7def8"],["Needs rebase","cccccc"]]],
+[35294,"wallet: Update tx chain state during loading during AttachChain instead of before","achow101",0,20260515,1,[["Wallet","08a781"]]],
+[35292,"test: Add coverage for Tor control `HASHEDPASSWORD` authentication","winterrdog",0,20260514,1,[["Tests","d4c5f9"]]],
+[35286,"rpc: add testsubmitpackage for 1p1c test submissions","instagibbs",1,20260513,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35281,"univalue: respect token end pointer","ferminquant",0,20260513,1,[["RPC/REST/ZMQ","0052cc"]]],
+[35229,"refactor: Use CBlockIndex parameters as reference","optout21",0,20260507,1,[["Refactoring","E6F6D6"]]],
+[35224,"wallet: importdescriptors should output the request on error","kevkevinpal",0,20260506,1,[["Wallet","08a781"]]],
+[35197,"guix: add -Wl,--icf=safe to darwin build","fanquake",1,20260503,1,[["Build system","5319e7"]]],
+[35195,"coins: cache UTXO outpoint hash codes","l0rinc",1,20260502,1,[["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[35187,"kernel: Block validation without a complete UTXO set","sedited",0,20260430,1,[["Validation","6060aa"]]],
+[35170,"test: Better test coverage for ParseHDKeypath()","optout21",0,20260428,1,[["Tests","d4c5f9"]]],
+[35167,"Convert check-deps.sh to python","ajtowns",0,20260427,1,[["Needs rebase","cccccc"]]],
+[35151,"wallet, follow-up: Refactor IsSpent to use HowSpent","musaHaruna",0,20260424,1,[]],
+[35139,"test: Add thread-safe fast-failing test macros","maflcko",1,20260422,1,[["Tests","d4c5f9"]]],
+[35072,"cmake: Remove optional definitions from `bitcoin-build-config.h`","hebasto",1,20260414,1,[["Build system","5319e7"],["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[35071,"Reindex: save progress to continue after interruption","pinheadmz",1,20260414,1,[]],
+[35068,"depends: fix cmake package discovery for depends-built packages","ryanofsky",1,20260413,1,[["Build system","5319e7"]]],
+[35054,"p2p: UTXO set sharing","fjahr",1,20260410,1,[["P2P","006b75"],["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[35041,"descriptor: speed-up `Parse` (xpub/xpriv) in ~30%","brunoerg",0,20260409,1,[["Descriptors","e9f76c"]]],
+[35040,"Remove CNode dependency for local address functions and introduce LocalAddressManager","theuni",1,20260409,1,[["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[35027,"net: add -outboundbind option for outgoing source address","8144225309",0,20260407,1,[["P2P","006b75"]]],
+[35026,"mempool: recalculate stale BIP68 lockpoints with mempool parents in removeForReorg","javierpmateos",0,20260407,1,[["Mempool","fef2c0"]]],
+[35003,"validation: improve block data I/O error handling in P2P paths","furszy",0,20260404,1,[["Validation","6060aa"],["Needs rebase","cccccc"]]],
+[35000,"test: Add block validation unit tests","ismaelsadeeq",1,20260404,1,[["Tests","d4c5f9"]]],
+[34969,"fuzz: several improvements to scriptpubkeyman harness","brunoerg",0,20260331,1,[["Fuzzing","0e8a16"]]],
+[34909,"wallet, refactor: modularise wallet by extracting out legacy wallet migration","rkrux",0,20260324,1,[]],
+[34879,"wallet, test: remove unnecessary node restart from wallet_reindex","rkrux",0,20260320,1,[]],
+[34872,"wallet: fix mixed-input transaction accounting in history RPCs","w0xlt",0,20260319,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[34864,"coins: tighten cache entry state invariants","l0rinc",0,20260319,1,[["UTXO Db and Indexes","fbca04"]]],
+[34824,"net: encapsulate TxRelay state and replace recursive mutexes","w0xlt",0,20260314,1,[["P2P","006b75"]]],
+[34778,"logging: rewrite macros to enforce restrictions at compile-time, improve efficiency and usability","ryanofsky",0,20260309,1,[["Needs rebase","cccccc"]]],
+[34775,"kernel: allow only one global logging connection","stickies-v",0,20260309,1,[["Validation","6060aa"]]],
+[34730,"util/log: Combine the warning/error log levels into a single alert level","ajtowns",1,20260304,1,[["Needs rebase","cccccc"]]],
+[34721,"build: install shell completions via cmake","willcl-ark",0,20260303,1,[["Build system","5319e7"]]],
+[34698,"wallet: handle MiniMiner bump fee calculation failures","shuv-amp",0,20260228,1,[["Wallet","08a781"]]],
+[34603,"wallet: Fix detection of symlinks on Windows","achow101",0,20260217,1,[["Wallet","08a781"]]],
+[34534,"rpc: Manual prune lock management (Take 2)","fjahr",0,20260208,1,[["RPC/REST/ZMQ","0052cc"]]],
+[34533,"wallet: resubmit transactions with private broadcast if enabled","vasild",1,20260207,1,[["Wallet","08a781"],["Needs rebase","cccccc"],["Private Broadcast","e7fa2f"]]],
+[34520,"refactor: Add [[nodiscard]] to functions returning bool+mutable ref","maflcko",1,20260205,1,[["Refactoring","E6F6D6"],["CI failed","cccccc"]]],
+[34502,"wallet: remove most asserts of `WALLET_FLAG_DESCRIPTORS` flag","rkrux",1,20260204,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[34489,"index: batch db writes during initial sync","furszy",1,20260203,1,[["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[34486,"net: Reduce local network activity when networkactive=0","willcl-ark",1,20260202,1,[["P2P","006b75"],["Needs rebase","cccccc"]]],
+[34405,"wallet: skip APS when no partial spend exists","8144225309",0,20260126,1,[["Wallet","08a781"]]],
+[34400,"wallet: parallel fast rescan (approx 8x speed up with 8 threads)","Eunovo",0,20260124,1,[["Wallet","08a781"]]],
+[34360,"bench: add WalletBalanceManySpent for high-history wallet scenario","w0xlt",0,20260121,1,[["Tests","d4c5f9"]]],
+[34322,"node: Persist private broadcast transactions over node restarts","andrewtoth",1,20260116,1,[["Needs rebase","cccccc"],["Private Broadcast","e7fa2f"]]],
+[34271,"net_processing: make m_tx_for_private_broadcast optional","vasild",1,20260113,1,[["Needs rebase","cccccc"],["Private Broadcast","e7fa2f"]]],
+[34264,"fuzz: Extend `spend` coverage","Chand-ra",0,20260112,1,[["Needs rebase","cccccc"],["Fuzzing","0e8a16"]]],
+[34254,"validation: Prevent duplicate logging and looping in invalid block handling","mzumsande",0,20260111,1,[["Validation","6060aa"]]],
+[34193,"wallet: make migration more robust against failures","furszy",0,20260102,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[34132,"coins, dbwrapper: remove error catcher, make point-read failures fatal","l0rinc",0,20251220,1,[["UTXO Db and Indexes","fbca04"]]],
+[34083,"Add initial vectorized chacha20 implementation for 2-3x speedup","theuni",1,20251216,1,[]],
+[34038,"logging: replace -loglevel with -trace, expose trace logging via RPC","ajtowns",0,20251210,1,[]],
+[33959,"test: deduplicate reorg test code","yuvicc",0,20251127,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[33954,"test: add functional test for outbound connection management","mzumsande",1,20251126,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"],["CI failed","cccccc"]]],
+[33922,"mining: add getMemoryLoad() and track template non-mempool memory footprint","Sjors",0,20251121,1,[["Mining","c7def8"]]],
+[33904,"rest: add interface for gettxspendingprevout rpc","kevkevinpal",0,20251118,1,[["RPC/REST/ZMQ","0052cc"],["Needs rebase","cccccc"]]],
+[33847,"kernel: Attach logging connections to contexts, per-connection log levels","ryanofsky",1,20251110,1,[["Validation","6060aa"],["Needs rebase","cccccc"]]],
+[33828,"Check required interfaces before generating manpages","151henry151",0,20251108,1,[]],
+[33741,"rpc: Optionally print feerates in sat/vb","polespinasa",0,20251030,1,[["RPC/REST/ZMQ","0052cc"]]],
+[33663,"net: Filter addrman during address selection via AddrPolicy to avoid underfill","waketraindev",0,20251020,1,[["P2P","006b75"]]],
+[33646,"log: check fclose() results and report safely in logging.cpp","cedwies",0,20251017,1,[["Utils/log/libs","5319e7"]]],
+[33637,"validation: reduce block index comparison overhead","l0rinc",0,20251016,1,[["Refactoring","E6F6D6"]]],
+[33324,"blocks: add resumable reobfuscation for existing block files","l0rinc",0,20250905,1,[]],
+[33145,"CI: silent merge check","m3dwards",0,20250806,1,[["Tests","d4c5f9"]]],
+[33117,"Interfaces: Expose UTXO Snapshot Loading and Add Progress Notifications","D33r-Gee",0,20250801,1,[["IPC","83c9fc"]]],
+[33112,"wallet: relax external_signer flag constraints","Sjors",0,20250801,1,[["Wallet","08a781"]]],
+[33043,"[POC] wallet: Enable non-electronic (paper-based) wallet backup with codex32","w0xlt",1,20250723,1,[["Needs rebase","cccccc"]]],
+[33034,"wallet: Store transactions in a separate sqlite table","achow101",1,20250721,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[33033,"wallet, sqlite: Encapsulate SQLite statements in a RAII class","achow101",0,20250721,1,[["Needs rebase","cccccc"]]],
+[32993,"fuzz: wallet: add target for tx scanning","brunoerg",1,20250716,1,[["Tests","d4c5f9"],["Fuzzing","0e8a16"]]],
+[32966,"Silent Payments: Receiving","Eunovo",1,20250714,1,[["Needs rebase","cccccc"]]],
+[32861,"Have createwalletdescriptor auto-detect an unused(KEY)","Sjors",0,20250703,1,[]],
+[32857,"wallet: allow skipping script paths","Sjors",0,20250702,1,[["Wallet","08a781"]]],
+[32575,"consensus: Remove special treatment for single threaded script checking","fjahr",0,20250520,1,[["Refactoring","E6F6D6"]]],
+[32554,"bench: replace embedded raw block with configurable block generator","l0rinc",0,20250518,1,[["Tests","d4c5f9"]]],
+[32468,"rpc: generateblock to allow multiple outputs","polespinasa",0,20250510,1,[["RPC/REST/ZMQ","0052cc"]]],
+[32427,"kernel: Replace leveldb-based BlockTreeDB with WAL and .dat file based store","sedited",1,20250506,1,[["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[32409,"test: Introduce `SUPPRESS_ABORT_MESSAGE` environment variable","hebasto",0,20250502,1,[["Windows","884400"],["Tests","d4c5f9"]]],
+[32387,"ipc: add windows support","ryanofsky",1,20250430,1,[["IPC","83c9fc"],["CI failed","cccccc"]]],
+[32278,"doc: better document NetEventsInterface and the deletion of \"CNode\"s","vasild",0,20250415,1,[["Docs","02d7e1"]]],
+[32247,"BIP-348 (OP_CHECKSIGFROMSTACK) (regtest only)","jamesob",1,20250410,1,[["Consensus","009800"],["Needs rebase","cccccc"],["Needs Conceptual Review","fef2c0"]]],
+[32229,"tests: Add unix timestamp tests for OP_CLTV and max mediantimepast tests","Christewart",0,20250407,1,[["Tests","d4c5f9"]]],
+[32065,"i2p: make a time gap between creating transient sessions and using them","vasild",0,20250314,1,[["P2P","006b75"],["Needs rebase","cccccc"]]],
+[31989,"BIP-119 (OP_CHECKTEMPLATEVERIFY) (regtest only)","jamesob",0,20250304,1,[["Consensus","009800"],["Needs rebase","cccccc"],["Needs Conceptual Review","fef2c0"]]],
+[31868,"[IBD] specialize block serialization","l0rinc",1,20250214,1,[["Needs rebase","cccccc"]]],
+[31672,"rpc: add cpu_load to getpeerinfo","vasild",0,20250116,1,[["RPC/REST/ZMQ","0052cc"]]],
+[31668,"Added rescan option for import descriptors","saikiran57",0,20250116,1,[]],
+[31507,"build: Use clang-cl to build on Windows natively","hebasto",0,20241216,1,[["Windows","884400"],["Build system","5319e7"]]],
+[31349,"ci: detect outbound internet traffic generated while running tests","vasild",0,20241122,1,[["Tests","d4c5f9"],["Needs rebase","cccccc"]]],
+[31260,"scripted-diff: Type-safe settings retrieval","ryanofsky",0,20241108,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[31252,"rpc: print P2WSH and P2SH redem Script in getrawtransaction and getblock","polespinasa",0,20241107,1,[["RPC/REST/ZMQ","0052cc"]]],
+[30988,"Split CConnman","vasild",1,20240927,1,[["Needs rebase","cccccc"]]],
+[30951,"net: option to disallow v1 connection on ipv4 and ipv6 peers","stratospher",0,20240923,1,[["P2P","006b75"]]],
+[30437,"ipc: add bitcoin-mine test program","ryanofsky",0,20240712,1,[["IPC","83c9fc"]]],
+[30361,"doc: Drop description of LogError messages as fatal","ryanofsky",1,20240628,1,[["Docs","02d7e1"]]],
+[30343,"wallet, logging: Replace WalletLogPrintf() with LogInfo()","ryanofsky",1,20240626,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[30342,"kernel, logging: Deliver each context's log output to its own logging connection","ryanofsky",1,20240626,1,[["Needs rebase","cccccc"]]],
+[29843,"policy: Allow non-standard scripts with -acceptnonstdtxn=1 (test nets only)","ajtowns",0,20240410,1,[["TX fees and policy","5319e7"]]],
+[29700,"kernel, refactor: return error status on all fatal errors","ryanofsky",1,20240321,1,[["Needs rebase","cccccc"]]],
+[29491,"[EXPERIMENTAL] Schnorr batch verification for blocks","fjahr",1,20240227,1,[]],
+[29418,"rpc: provide per message stats for global traffic via new field in 'getnettotals'","vasild",0,20240211,1,[["RPC/REST/ZMQ","0052cc"]]],
+[29409,"ipc: Expose Chain interface to IPC clients","ryanofsky",0,20240208,1,[["IPC","83c9fc"]]],
+[29256,"log, refactor: Allow log macros to accept context arguments","ryanofsky",1,20240116,1,[["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[29247,"CAT in Tapscript (BIP-347)","arminsabouri",1,20240114,1,[["Consensus","009800"]]],
+[28690,"build: Introduce internal kernel library","sedited",0,20231020,1,[["Build system","5319e7"],["Needs rebase","cccccc"]]],
+[27865,"wallet: Track no-longer-spendable TXOs separately","achow101",0,20230612,1,[["Wallet","08a781"],["Needs rebase","cccccc"]]],
+[27409,"Make GUI and CLI tools use the same datadir","ryanofsky",1,20230403,1,[["Needs rebase","cccccc"]]],
+[27260,"Enhanced error messages for invalid network prefix during address parsing.","portlandhodl",1,20230315,1,[["RPC/REST/ZMQ","0052cc"],["Needs rebase","cccccc"]]],
+[26966,"index: initial sync speedup, parallelize process","furszy",1,20230125,1,[["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[26022,"Add util::ResultPtr class","ryanofsky",1,20220906,1,[["Needs rebase","cccccc"]]],
+[25722,"refactor: Use util::Result class for wallet loading","ryanofsky",1,20220727,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[25665,"refactor: Add util::Result failure types and ability to merge result values","ryanofsky",0,20220721,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[25573,"guix: produce a `-static-pie` bitcoind","fanquake",0,20220708,1,[["Build system","5319e7"]]],
+[24230,"indexes: Stop using node internal types and locking cs_main, improve sync logic","ryanofsky",1,20220201,1,[["UTXO Db and Indexes","fbca04"],["Needs rebase","cccccc"]]],
+[19461,"multiprocess: Add bitcoin-gui -ipcconnect option","ryanofsky",1,20200707,1,[["GUI","02d7e1"],["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[19460,"multiprocess: Add bitcoin-wallet -ipcconnect option","ryanofsky",1,20200707,1,[["Wallet","08a781"],["Build system","5319e7"],["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[17783,"common: Disallow calling IsArgSet() on ALLOW_LIST options","ryanofsky",1,20191220,1,[["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[17581,"refactor: Remove settings merge reverse precedence code","ryanofsky",1,20191124,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[17580,"refactor: Add ALLOW_LIST flags and enforce usage in CheckArgFlags","ryanofsky",1,20191124,1,[["Refactoring","E6F6D6"],["Needs rebase","cccccc"]]],
+[17493,"util: Forbid ambiguous multiple assignments in config file","ryanofsky",1,20191115,1,[["Refactoring","E6F6D6"],["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[16545,"refactor: Implement missing error checking for ArgsManager flags","ryanofsky",1,20190804,1,[["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
+[10102,"Multiprocess bitcoin","ryanofsky",1,20170327,1,[["GUI","02d7e1"],["RPC/REST/ZMQ","0052cc"]]]
+].map(p=>({n:p[0],title:p[1],author:p[2],draft:!!p[3],created:String(p[4]).replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"),avatar:p[5]?"https://avatars.githubusercontent.com/"+p[2]+"?v=4&size=160":"",labels:p[6].map(l=>({name:l[0],color:l[1]}))}));
+
+/* ---------- infinite deck ---------- */
+let queue = [], idx = 0, round = 1;
+function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function refill(){ queue = shuffle(PRS.slice()); idx = 0; }
+function nextPR(){
+  if (idx >= queue.length) {
+    round++;
+    refill();
+    toast(round === 2 ? "It's a match made in CI heaven — round 2 💌" : "Back on the market — round " + round + " 🔁");
+  }
+  return queue[idx++];
+}
+refill();
+
+/* ---------- comedic bios (deterministic per PR, no re-roll) ---------- */
+const RED = ["Still on a two-month-old master. Looking for someone to fix that.",
+ "My tests fail, but I'm working on myself. Swipe right and I'll change.",
+ "CI failed once. Okay, 61 times. Everybody has a past.",
+ "The red ❌ is my toxic ex, not me."];
+const NICE = ["Comes with tests, docs, and a changelog entry. I'm a catch and I know it.",
+ "Fuzzed every night for a year. Still standing. Still glowing.",
+ "My coverage numbers? Say no more. Just say when."];
+const BASE = ["Long walks through the review queue.",
+ "Just a normal PR. Nothing to declare. Definitely not LLM-generated.",
+ "I was written in 14 minutes by an agent that has since been deleted. Review me gently.",
+ "My author has never compiled me. We are, strictly speaking, pen pals.",
+ "Looking for a merge, not a hookup. Ready to settle down on master.",
+ "Will argue UTXO semantics on the first date.",
+ "My love language is 'Addressed comments' with a weekly 'any thoughts?' ping.",
+ "Dislikes: rebases. Loves: concept ACKs from maintainers I've never met.",
+ "I promise the failure is a flake. They're all flakes, baby.",
+ "I've been in this queue since I arrived. We can still make it work.",
+ "My author works somewhere you've heard of. My CI budget is unlimited.",
+ "Take me as I am: 4,000 lines, one test, infinite opinions."];
+const LAB = {"Needs rebase":["'Needs rebase' is just a label the haters gave me."],
+ "CI failed":["I fail, therefore I am. Descartes, probably, watching my CI."],
+ "Tests":["I bring my own tests to every first date."],
+ "Wallet":["I touch wallet code. My ex, 0.21, still misses me."],
+ "P2P":["I know all the peers. Some say too many."],
+ "Refactoring":["I don't change behavior, I just glow up."],
+ "Docs":["I'll read the release notes to you at night."],
+ "Backport":["Not my first repo. I've been merged elsewhere. I know how the world works."],
+ "Build system":["I break the builders, then apologize beautifully."],
+ "Fuzzing":["Fuzzed nightly. Nobody has ever complained. To my face."],
+ "PSBT":["Output descriptors are my only descriptors."],
+ "Descriptors":["Output descriptors are my only descriptors."],
+ "Mining":["I mine. You profit. It's a business relationship."],
+ "Mempool":["I got evicted once. I don't like to talk about it."],
+ "RPC/REST/ZMQ":["Talk RPC to me."],
+ "Validation":["I reject your invalid block and then ask for a commit."],
+ "Utils/log/libs":["Small, quiet, low-maintenance. The one your parents wanted."],
+ "Private Broadcast":["Very private. Very broadcast. Swipe to find out."]};
+function pick(pool, n){ return pool[n % pool.length]; }
+function bioFor(pr){
+  const n = pr.n; let s;
+  const names = pr.labels.map(x => x.name);
+  if (names.includes("Needs rebase")) s = "🚩 " + pick(RED.concat(LAB["Needs rebase"]), n);
+  else if (names.includes("CI failed")) s = "🚩 " + pick(RED.concat(LAB["CI failed"]), n);
+  else if (names.includes("Tests")) s = "✅ " + pick(NICE, n);
+  else {
+    let lab = null;
+    for (const k of Object.keys(LAB)) if (names.includes(k)) { lab = k; break; }
+    s = lab ? pick(LAB[lab], n) : pick(BASE, n);
+  }
+  if (pr.labels.length >= 4) s += " Also: looking for someone who can handle ALL of this.";
+  if (pr.draft) s += " (It's not you, it's me — I'm just not ready yet.)";
+  return s;
+}
+function daysOpen(pr){ return Math.max(0, Math.round((Date.parse("2026-10-25") - Date.parse(pr.created)) / 864e5)); }
+
+/* ---------- render ---------- */
+const el = id => document.getElementById(id);
+const deck = el("deck"), card = el("card");
+let current = null, yes = 0, no = 0;
+el("pool").textContent = PRS.length + " lonely PRs";
+el("frozen").textContent = "Oct 25, 2026";
+
+function render(pr){
+  current = pr;
+  const av = el("avatar");
+  if (pr.avatar) { av.src = pr.avatar; av.style.display = "block"; }
+  else av.style.display = "none";
+  el("name").textContent = "@" + pr.author;
+  const d = daysOpen(pr);
+  el("sub").textContent = "wants to merge · #" + pr.n;
+  el("title").innerHTML = '<a href="https://github.com/bitcoin/bitcoin/pull/' + pr.n + '" target="_blank" rel="noopener">' + esc(pr.title) + '</a>';
+  const lab = el("labels"); lab.innerHTML = "";
+  if (pr.draft) { const c = document.createElement("span"); c.className = "chip draft"; c.textContent = "draft"; lab.appendChild(c); }
+  for (const l of pr.labels.slice(0, 6)) {
+    const c = document.createElement("span"); c.className = "chip";
+    c.style.background = "#" + (l.color || "30363d");
+    c.style.color = lum(l.color) > 0.55 ? "#111" : "#fff";
+    c.textContent = l.name; lab.appendChild(c);
+  }
+  el("bio").textContent = bioFor(pr);
+  el("meta-age").textContent = pr.created + " · " + (d === 0 ? "new here, be gentle" : d + " day" + (d===1?"":"s") + " in the queue");
+  el("meta-act").textContent = (pr.labels.includes("CI failed") ? "CI: heartbroken" : "CI: optimistic");
+  setStamp(0); setStamp(0);
+  apply(null, 0);
+  card.style.display = "flex";
+}
+function esc(s){ return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function lum(hex){
+  const c = parseInt(hex || "30363d", 16);
+  return (0.2126*((c>>16)&255) + 0.7152*((c>>8)&255) + 0.0722*(c&255)) / 255;
+}
+function useInit(){
+  const av = el("avatar");
+  av.style.display = "none";
+  if (!document.getElementById("init")) {
+    const d = document.createElement("div");
+    d.className = "init"; d.id = "init";
+    av.after(d);
+  }
+  document.getElementById("init").textContent = current ? current.author.slice(0,2).toUpperCase() : "?";
+}
+
+/* ---------- swipe physics ---------- */
+let px = null, py = null, dx = 0, dy = 0, dragging = false, moved = false;
+const TH = 110;
+function apply(dx_, dy_){
+  const r = dx_ / 18;
+  card.style.transform = "translate(" + dx_ + "px," + dy_ + "px) rotate(" + Math.max(-18, Math.min(18, r)) + "deg)";
+  const t = Math.max(-1, Math.min(1, dx_ / 90));
+  el("stamp-no").style.opacity = Math.max(0, -t);
+  el("stamp-yes").style.opacity = Math.max(0, t);
+  el("stamp-no").style.transform = "scale(" + (1 + 0.35*Math.max(0,-t)) + ") rotate(-14deg)";
+  el("stamp-yes").style.transform = "scale(" + (1 + 0.35*Math.max(0,t)) + ") rotate(12deg)";
+}
+function setStamp(v){ el("stamp-no").style.opacity = v; el("stamp-yes").style.opacity = v; }
+card.addEventListener("pointerdown", e => { if (dragging) return; dragging = true; moved = false; px = e.clientX; py = e.clientY; card.setPointerCapture(e.pointerId); });
+card.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  dx = (e.clientX - px); dy = Math.max(-40, Math.min(40, (e.clientY - py) / 6));
+  if (Math.abs(e.clientX - px) > 5 || Math.abs(e.clientY - py) > 5) moved = true;
+  apply(dx, dy);
+});
+card.addEventListener("pointerup", () => {
+  if (!dragging) return; dragging = false;
+  if (Math.abs(dx) > TH) swipe(dx > 0);
+  else apply(0, 0);
+  dx = 0; dy = 0;
+});
+card.addEventListener("pointercancel", () => { dragging = false; apply(0, 0); });
+el("title").addEventListener("click", e => { if (moved) { e.preventDefault(); e.stopPropagation(); } }, true);
+
+function fly(right, cb){
+  const far = (right ? 1 : -1) * (window.innerWidth + 120);
+  card.style.transition = "transform .32s ease-out, opacity .32s";
+  card.style.transform = "translate(" + far + "px, " + (-60) + "px) rotate(" + (right ? 28 : -28) + "deg)";
+  card.style.opacity = "0.6";
+  setTimeout(() => { card.style.transition = ""; card.style.opacity = ""; cb(); }, 300);
+}
+function swipe(right, viaButtons){
+  const pr = current;
+  if (!pr) return;
+  if (right) { yes++; el("c-yes").textContent = yes; } else { no++; el("c-no").textContent = no; }
+  if (!viaButtons && navigator.vibrate) navigator.vibrate(right ? 18 : 12);
+  quip(right);
+  if (right && yes % 10 === 0) match(pr);
+  fly(right, () => render(nextPR()));
+}
+
+/* ---------- quips ---------- */
+const LQ = ["A maintainer somewhere just felt a disturbance.",
+ "That PR will cry itself to sleep tonight.",
+ "The bot that wrote it never knew love anyway.",
+ "Closed without prejudice. Some prejudice.",
+ "Concept NACK'd. Emotionally devastating.",
+ "It goes back to the queue. The queue is forever."];
+const RQ = ["Merged on first review. Lucky you.",
+ "Concept ACK. Now do the actual work.",
+ "It's a match! CI is running the wedding.",
+ "utACK. A love language of its own.",
+ "Ship it. Tell no one how easy that was."];
+let quipToggle = 0;
+function quip(right){ toast(pick(right ? RQ : LQ, ++quipToggle)); }
+let toastTimer = null;
+function toast(msg){
+  const t = el("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+function match(pr){
+  el("m-avatar").src = pr.avatar || "";
+  el("m-text").textContent = "You and #" + pr.n + " (" + pr.author + ") have ACKed each other. The rebase can wait until tomorrow.";
+  el("match").classList.add("show");
+}
+
+el("no").addEventListener("click", () => swipe(false, true));
+el("yes").addEventListener("click", () => swipe(true, true));
+
+render(nextPR());
+</script>
+</body>
+</html>
