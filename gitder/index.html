@@ -654,7 +654,7 @@ const PRS=[
 [17493,"util: Forbid ambiguous multiple assignments in config file","ryanofsky",1,20191115,1,[["Refactoring","E6F6D6"],["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
 [16545,"refactor: Implement missing error checking for ArgsManager flags","ryanofsky",1,20190804,1,[["Utils/log/libs","5319e7"],["Needs rebase","cccccc"]]],
 [10102,"Multiprocess bitcoin","ryanofsky",1,20170327,1,[["GUI","02d7e1"],["RPC/REST/ZMQ","0052cc"]]]
-].map(p=>({n:p[0],title:p[1],author:p[2],draft:!!p[3],created:String(p[4]).replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"),avatar:p[5]?"https://avatars.githubusercontent.com/"+p[2]+"?v=4&size=160":"",labels:p[6].map(l=>({name:l[0],color:l[1]}))}));
+].map(p=>({n:p[0],title:p[1],author:p[2],draft:!!p[3],created:String(p[4]).replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"),labels:p[6].map(l=>({name:l[0],color:l[1]}))}));
 
 /* ---------- infinite deck ---------- */
 let queue = [], idx = 0, round = 1;
@@ -736,8 +736,7 @@ el("frozen").textContent = "Oct 25, 2026";
 function render(pr){
   current = pr;
   const av = el("avatar");
-  if (pr.avatar) { av.src = pr.avatar; av.style.display = "block"; }
-  else av.style.display = "none";
+  av.src = AVLOC(pr.author); av.style.display = "block";
   el("name").textContent = "@" + pr.author;
   const d = daysOpen(pr);
   el("sub").textContent = "wants to merge · #" + pr.n;
@@ -842,7 +841,7 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
 }
 function match(pr){
-  el("m-avatar").src = pr.avatar || "";
+  el("m-avatar").src = AVLOC(pr.author);
   el("m-text").textContent = "You and #" + pr.n + " (" + pr.author + ") have ACKed each other. The rebase can wait until tomorrow.";
   el("match").classList.add("show");
 }
@@ -852,14 +851,14 @@ el("yes").addEventListener("click", () => swipe(true, true));
 
 /* ---------- avatar prefetch: keep the next cards' avatars warm ---------- */
 const seenAuthors = new Set();
-const AV = a => "https://avatars.githubusercontent.com/" + a + "?v=4&size=160";
+const AVLOC = a => "avatars/j/" + a + ".jpg";
 function prefetchAvatars(start, count){
   let added = 0;
   for (let i = start; i < queue.length && added < count; i++) {
     const a = queue[i].author;
     if (!a || seenAuthors.has(a)) continue;
     seenAuthors.add(a); added++;
-    new Image().src = AV(a);
+    new Image().src = AVLOC(a);
   }
 }
 function primeAvatars(){ prefetchAvatars(idx, 13); }
