@@ -756,6 +756,7 @@ function render(pr){
   setStamp(0);
   apply(0, 0);
   card.style.display = "flex";
+  primeAvatars();
 }
 function esc(s){ return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
 function lum(hex){
@@ -849,7 +850,22 @@ function match(pr){
 el("no").addEventListener("click", () => swipe(false, true));
 el("yes").addEventListener("click", () => swipe(true, true));
 
+/* ---------- avatar prefetch: keep the next cards' avatars warm ---------- */
+const seenAuthors = new Set();
+const AV = a => "https://avatars.githubusercontent.com/" + a + "?v=4&size=160";
+function prefetchAvatars(start, count){
+  let added = 0;
+  for (let i = start; i < queue.length && added < count; i++) {
+    const a = queue[i].author;
+    if (!a || seenAuthors.has(a)) continue;
+    seenAuthors.add(a); added++;
+    new Image().src = AV(a);
+  }
+}
+function primeAvatars(){ prefetchAvatars(idx, 13); }
+
 render(nextPR());
+primeAvatars();
 </script>
 </body>
 </html>
