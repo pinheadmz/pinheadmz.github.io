@@ -750,9 +750,9 @@ function render(pr){
   }
   el("bio").textContent = bioFor(pr);
   el("meta-age").textContent = pr.created + " · " + (d === 0 ? "new here, be gentle" : d + " day" + (d===1?"":"s") + " in the queue");
-  el("meta-act").textContent = (pr.labels.includes("CI failed") ? "CI: heartbroken" : "CI: optimistic");
-  setStamp(0); setStamp(0);
-  apply(null, 0);
+  el("meta-act").textContent = (pr.labels.some(l => l.name === "CI failed") ? "CI: heartbroken" : "CI: optimistic");
+  setStamp(0);
+  apply(0, 0);
   card.style.display = "flex";
 }
 function esc(s){ return s.replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
